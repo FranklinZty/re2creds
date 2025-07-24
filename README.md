@@ -1,4 +1,4 @@
-# Recreds
+# Re2creds
 A proof of concept implemention of Re2creds: Reusable Anonymous Credential Scheme based on Recursive SNARKs.
 
 Re2creds is the first reusable anonymous credential scheme with expressive functionality and high performance. Primarily, our design features a malleable SNARK system utilizing recursive composition, hence surpassing existing schemes in expressiveness, offering not just simple rerandomization but also predicate updates, credential
