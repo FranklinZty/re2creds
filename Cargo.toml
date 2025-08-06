@@ -4,10 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-halo2_proofs = { git = "https://github.com/privacy-scaling-explorations/halo2", tag = "v2023_04_20"}
-halo2_gadgets = {version = "0.3.1", features = ["unstable-sha256-gadget"]}
+halo2_proofs = {  git = "https://github.com/privacy-scaling-explorations/halo2", tag = "v0.3.0", default-features = false}
+# halo2_gadgets = {version = "0.3.1", features = ["unstable-sha256-gadget"]}
 bitvec = "1.0.1"
-halo2curves = "0.4.0"
+halo2curves = { version = "0.6.1" }
 criterion = "0.5.1"
 rand = "0.8.5"
 rand_core = "0.6.4"
+ff={version="0.13.0", features = ["bits"]}
+# halo2_poseidon ={ git = "https://github.com/privacy-scaling-explorations/poseidon-gadget"}
+halo2_poseidon={ path = "halo2_poseidon" }
+group = "0.13"

@@ -138,7 +138,7 @@ impl<F: Field> Circuit<F> for MyCircuit<F> {
     }
 }
 
-mod test_code1 {
+mod tests {
     use super::*;
     use halo2_proofs::{dev::MockProver};
     use halo2_proofs::{
