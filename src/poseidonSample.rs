@@ -147,7 +147,7 @@ mod tests{
 
     // #[test]
     // fn hash_test_vectors() {
-    //     for tv in halo2_poseidon::poseidon::primitives::test_vectors::fp::hash() {
+    //     for tv in halo2_poseidon::poseidon::primitives::fp::hash() {
     //         let message = [
     //             pallas::Base::from_repr(tv.input[0]).unwrap(),
     //             pallas::Base::from_repr(tv.input[1]).unwrap(),
