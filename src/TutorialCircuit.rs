@@ -1,200 +1,83 @@
-use halo2_proofs::circuit::Value;
 use halo2_proofs::{
-    arithmetic::FieldExt,
-    circuit::{Cell, Chip, Layouter, SimpleFloorPlanner},
-    plonk::{Advice, Assigned, Circuit, Column, ConstraintSystem, Error, Fixed, Instance},
+    arithmetic::Field,
+    circuit::{AssignedCell, Layouter, SimpleFloorPlanner, Value},
+    plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Instance, Selector},
     poly::Rotation,
 };
-use std::marker::PhantomData;
 
-#[allow(non_snake_case, dead_code)]
+
+
+
 #[derive(Debug, Clone)]
-struct TutorialConfig {
-    l: Column<Advice>,
-    r: Column<Advice>,
-    o: Column<Advice>,
-
-    sl: Column<Fixed>,
-    sr: Column<Fixed>,
-    so: Column<Fixed>,
-    sm: Column<Fixed>,
-    sc: Column<Fixed>,
-    PI: Column<Instance>,
+struct CircuitConfig {
+    advice: [Column<Advice>; 2],
+    instance: Column<Instance>,
+    s_mul: Selector,
 }
 
-struct TutorialChip<F: FieldExt> {
-    config: TutorialConfig,
-    marker: PhantomData<F>,
-}
-
-impl<F: FieldExt> TutorialChip<F> {
-    fn new(config: TutorialConfig) -> Self {
-        TutorialChip {
-            config,
-            marker: PhantomData,
-        }
-    }
-}
-
-impl<F: FieldExt> Chip<F> for TutorialChip<F> {
-    type Config = TutorialConfig;
-    type Loaded = ();
-
-    fn config(&self) -> &Self::Config {
-        &self.config
-    }
-
-    fn loaded(&self) -> &Self::Loaded {
-        &()
-    }
-}
-
-trait TutorialComposer<F: FieldExt> {
-    fn raw_multiply<FM>(
-        &self,
-        layouter: &mut impl Layouter<F>,
-        f: FM,
-    ) -> Result<(Cell, Cell, Cell), Error>
-    where
-        FM: FnMut() -> Value<(Assigned<F>, Assigned<F>, Assigned<F>)>;
-
-    fn raw_add<FM>(
-        &self,
-        layouter: &mut impl Layouter<F>,
-        f: FM,
-    ) -> Result<(Cell, Cell, Cell), Error>
-    where
-        FM: FnMut() -> Value<(Assigned<F>, Assigned<F>, Assigned<F>)>;
-
-    /// Ensure two wire values are the same, in effect connecting the wires to each other
-    fn copy(&self, layouter: &mut impl Layouter<F>, a: Cell, b: Cell) -> Result<(), Error>;
-
-    /// Exposes a number as a public input to the circuit.
-    fn expose_public(
-        &self,
-        layouter: &mut impl Layouter<F>,
-        cell: Cell,
-        row: usize,
-    ) -> Result<(), Error>;
-}
-
-impl<F: FieldExt> TutorialComposer<F> for TutorialChip<F> {
-    fn raw_multiply<FM>(
-        &self,
-        layouter: &mut impl Layouter<F>,
-        mut f: FM,
-    ) -> Result<(Cell, Cell, Cell), Error>
-    where
-        FM: FnMut() -> Value<(Assigned<F>, Assigned<F>, Assigned<F>)>,
-    {
-        layouter.assign_region(
-            || "mul",
-            |mut region| {
-                let mut values = None;
-                let lhs = region.assign_advice(
-                    || "lhs",
-                    self.config.l,
-                    0,
-                    || {
-                        values = Some(f());
-                        values.unwrap().map(|v| v.0)
-                    },
-                )?;
-                let rhs = region.assign_advice(
-                    || "rhs",
-                    self.config.r,
-                    0,
-                    || values.unwrap().map(|v| v.1),
-                )?;
-
-                let out = region.assign_advice(
-                    || "out",
-                    self.config.o,
-                    0,
-                    || values.unwrap().map(|v| v.2),
-                )?;
-
-                region.assign_fixed(|| "m", self.config.sm, 0, || Value::known(F::one()))?;
-                region.assign_fixed(|| "o", self.config.so, 0, || Value::known(F::one()))?;
-
-                Ok((lhs.cell(), rhs.cell(), out.cell()))
-            },
-        )
-    }
-
-    fn raw_add<FM>(
-        &self,
-        layouter: &mut impl Layouter<F>,
-        mut f: FM,
-    ) -> Result<(Cell, Cell, Cell), Error>
-    where
-        FM: FnMut() -> Value<(Assigned<F>, Assigned<F>, Assigned<F>)>,
-    {
-        layouter.assign_region(
-            || "add",
-            |mut region| {
-                let mut values = None;
-                let lhs = region.assign_advice(
-                    || "lhs",
-                    self.config.l,
-                    0,
-                    || {
-                        values = Some(f());
-                        values.unwrap().map(|v| v.0)
-                    },
-                )?;
-                let rhs = region.assign_advice(
-                    || "rhs",
-                    self.config.r,
-                    0,
-                    || values.unwrap().map(|v| v.1),
-                )?;
-
-                let out = region.assign_advice(
-                    || "out",
-                    self.config.o,
-                    0,
-                    || values.unwrap().map(|v| v.2),
-                )?;
-
-                region.assign_fixed(|| "l", self.config.sl, 0, || Value::known(F::one()))?;
-                region.assign_fixed(|| "r", self.config.sr, 0, || Value::known(F::one()))?;
-                region.assign_fixed(|| "o", self.config.so, 0, || Value::known(F::one()))?;
-
-                Ok((lhs.cell(), rhs.cell(), out.cell()))
-            },
-        )
-    }
-
-    fn copy(&self, layouter: &mut impl Layouter<F>, left: Cell, right: Cell) -> Result<(), Error> {
-        layouter.assign_region(
-            || "copy",
-            |mut region| {
-                region.constrain_equal(left, right)?;
-                region.constrain_equal(left, right)
-            },
-        )
-    }
-
-    fn expose_public(
-        &self,
-        layouter: &mut impl Layouter<F>,
-        cell: Cell,
-        row: usize,
-    ) -> Result<(), Error> {
-        layouter.constrain_instance(cell, self.config.PI, row)
-    }
-}
+#[derive(Clone)]
+struct Number<F: Field>(AssignedCell<F, F>);
 
 #[derive(Default)]
-struct TutorialCircuit<F: FieldExt> {
-    x: Value<F>,
-    y: Value<F>,
-    constant: F,
+struct MyCircuit<F: Field> {
+    c: F,
+    a: Value<F>,
+    b: Value<F>,
 }
 
-impl<F: FieldExt> Circuit<F> for TutorialCircuit<F> {
-    type Config = TutorialConfig;
+fn load_private<F: Field>(
+    config: &CircuitConfig,
+    mut layouter: impl Layouter<F>,
+    value: Value<F>,
+) -> Result<Number<F>, Error> {
+    layouter.assign_region(
+        || "load private",
+        |mut region| {
+            region
+                .assign_advice(|| "private input", config.advice[0], 0, || value)
+                .map(Number)
+        },
+    )
+}
+
+fn load_constant<F: Field>(
+    config: &CircuitConfig,
+    mut layouter: impl Layouter<F>,
+    c: F,
+) -> Result<Number<F>, Error> {
+    layouter.assign_region(
+        || "load private",
+        |mut region| {
+            region
+                .assign_advice_from_constant(|| "private input", config.advice[0], 0, c)
+                .map(Number)
+        },
+    )
+}
+
+fn mul<F: Field>(
+    config: &CircuitConfig,
+    mut layouter: impl Layouter<F>,
+    a: Number<F>,
+    b: Number<F>,
+) -> Result<Number<F>, Error> {
+    layouter.assign_region(
+        || "mul",
+        |mut region| {
+            config.s_mul.enable(&mut region, 0)?;
+            a.0.copy_advice(|| "lhs", &mut region, config.advice[0], 0)?;
+            b.0.copy_advice(|| "rhs", &mut region, config.advice[1], 0)?;
+
+            let value = a.0.value().copied() * b.0.value().copied();
+            region
+                .assign_advice(|| "out=lhs*rhs", config.advice[0], 1, || value)
+                .map(Number)
+        },
+    )
+}
+
+impl<F: Field> Circuit<F> for MyCircuit<F> {
+    type Config = CircuitConfig;
     type FloorPlanner = SimpleFloorPlanner;
 
     fn without_witnesses(&self) -> Self {
@@ -202,47 +85,36 @@ impl<F: FieldExt> Circuit<F> for TutorialCircuit<F> {
     }
 
     fn configure(meta: &mut ConstraintSystem<F>) -> Self::Config {
-        let l = meta.advice_column();
-        let r = meta.advice_column();
-        let o = meta.advice_column();
+        let advice = [meta.advice_column(), meta.advice_column()];
+        let instance = meta.instance_column();
+        let constant = meta.fixed_column();
 
-        meta.enable_equality(l);
-        meta.enable_equality(r);
-        meta.enable_equality(o);
+        meta.enable_equality(instance);
+        meta.enable_constant(constant);
 
-        let sm = meta.fixed_column();
-        let sl = meta.fixed_column();
-        let sr = meta.fixed_column();
-        let so = meta.fixed_column();
-        let sc = meta.fixed_column();
-        #[allow(non_snake_case)]
-        let PI = meta.instance_column();
-        meta.enable_equality(PI);
+        for c in &advice {
+            meta.enable_equality(*c);
+        }
+        let s_mul = meta.selector();
 
-        meta.create_gate("mini plonk", |meta| {
-            let l = meta.query_advice(l, Rotation::cur());
-            let r = meta.query_advice(r, Rotation::cur());
-            let o = meta.query_advice(o, Rotation::cur());
-
-            let sl = meta.query_fixed(sl, Rotation::cur());
-            let sr = meta.query_fixed(sr, Rotation::cur());
-            let so = meta.query_fixed(so, Rotation::cur());
-            let sm = meta.query_fixed(sm, Rotation::cur());
-            let sc = meta.query_fixed(sc, Rotation::cur());
-
-            vec![l.clone() * sl + r.clone() * sr + l * r * sm + (o * so * (-F::one())) + sc]
+        /* Gate design:
+              | a0  |  a1 | s_mul |
+              | ----|-----|-------|
+              | lhs | rhs | s_mul |
+              | out |     |       |
+        */
+        meta.create_gate("mul_gate", |meta| {
+            let lhs = meta.query_advice(advice[0], Rotation::cur());
+            let rhs = meta.query_advice(advice[1], Rotation::cur());
+            let out = meta.query_advice(advice[0], Rotation::next());
+            let s_mul = meta.query_selector(s_mul);
+            vec![s_mul * (lhs * rhs - out)]
         });
 
-        TutorialConfig {
-            l,
-            r,
-            o,
-            sl,
-            sr,
-            so,
-            sm,
-            sc,
-            PI,
+        CircuitConfig {
+            advice,
+            instance,
+            s_mul,
         }
     }
 
@@ -251,78 +123,112 @@ impl<F: FieldExt> Circuit<F> for TutorialCircuit<F> {
         config: Self::Config,
         mut layouter: impl Layouter<F>,
     ) -> Result<(), Error> {
-        let cs = TutorialChip::new(config);
+        let a = load_private(&config, layouter.namespace(|| "load a"), self.a)?;
+        let b = load_private(&config, layouter.namespace(|| "load b"), self.b)?;
+        let c = load_constant(&config, layouter.namespace(|| "load c"), self.c)?;
 
-        // Initialise these values so that we can access them more easily outside the block we actually give them a value in
-        let x: Value<Assigned<_>> = self.x.into();
-        let y: Value<Assigned<_>> = self.y.into();
-        let consty = Assigned::from(self.constant);
+        let ab = mul(&config, layouter.namespace(|| "a*b"), a, b)?;
+        let absq = mul(&config, layouter.namespace(|| "ab*ab"), ab.clone(), ab)?;
+        let out = mul(&config, layouter.namespace(|| "absq*c"), absq, c)?;
 
-        // Create x squared
-        // Note that the variables named ai for some i are just place holders, meaning that a0 isn't
-        // necessarily the first entry in the column a; though in the code we try to make things clear
-        let (a0, b0, c0) = cs.raw_multiply(&mut layouter, || x.map(|x| (x, x, x * x)))?;
-        cs.copy(&mut layouter, a0, b0)?;
-
-        // Create y squared
-        let (a1, b1, c1) = cs.raw_multiply(&mut layouter, || y.map(|y| (y, y, y * y)))?;
-        cs.copy(&mut layouter, a1, b1)?;
-
-        // Create xy squared
-        let (a2, b2, c2) = cs.raw_multiply(&mut layouter, || {
-            x.zip(y).map(|(x, y)| (x * x, y * y, x * x * y * y))
-        })?;
-        cs.copy(&mut layouter, c0, a2)?;
-        cs.copy(&mut layouter, c1, b2)?;
-
-        // Add the constant
-        let (a3, b3, c3) = cs.raw_add(&mut layouter, || {
-            x.zip(y)
-                .map(|(x, y)| (x * x * y * y, consty, x * x * y * y + consty))
-        })?;
-        cs.copy(&mut layouter, c2, a3)?;
-
-        // Ensure that the constant in the TutorialCircuit struct is correctly used and that the
-        // result of the circuit computation is what is expected. (use expose_public))
-        cs.expose_public(&mut layouter, b3, 0)?;
-        // Below is another way to expose a public value, this time the output value of the computation
-        // (Use constrain_instance)
-        layouter.constrain_instance(c3, cs.config.PI, 1)?;
-
-        Ok(())
+        //expose public
+        layouter
+            .namespace(|| "expose out")
+            .constrain_instance(out.0.cell(), config.instance, 0)
     }
 }
 
-#[test]
-fn tutorial_test() {
-    use halo2_proofs::dev::MockProver;
-    use halo2_proofs::halo2curves::bn256::Fr as Fp;
-
-    // The number of rows in our circuit cannot exceed 2^k. Since our example
-    // circuit is very small, we can pick a very small value here.
-    let k = 4;
-
-    let constant = Fp::from(7);
-    let x = Fp::from(5);
-    let y = Fp::from(9);
-    let z = Fp::from(25 * 81 + 7);
-
-    let circuit: TutorialCircuit<Fp> = TutorialCircuit {
-        x: Value::known(x),
-        y: Value::known(y),
-        constant: constant,
+mod test_code1 {
+    use super::*;
+    use halo2_proofs::{dev::MockProver};
+    use halo2_proofs::{
+        circuit::{Value},
+        plonk::{
+            create_proof, keygen_pk, keygen_vk, verify_proof
+        },
+        poly::{
+            commitment::ParamsProver,
+            ipa::{
+                commitment::{IPACommitmentScheme, ParamsIPA},
+                multiopen::ProverIPA,
+                strategy::SingleStrategy,
+            },
+            VerificationStrategy,
+        },
+        transcript::{
+            Blake2bRead, Blake2bWrite, Challenge255, TranscriptReadBuffer, TranscriptWriterBuffer,
+        },
     };
+    use halo2curves::pasta::{vesta, EqAffine, Fp};
 
-    // let mut public_inputs = vec![constant, z];
-    let mut public_inputs = vec![constant, z];
+    use criterion::{criterion_group, criterion_main, Criterion};
+    use rand::rngs::OsRng;
+    #[test]
+    pub fn test_sample() {
+        // ANCHOR: test-circuit
+        // The number of rows in our circuit cannot exceed 2^k. Since our example
+        // circuit is very small, we can pick a very small value here.
+        let k = 5;
 
-    // Given the correct public input, our circuit will verify.
-    let prover = MockProver::run(k, &circuit, vec![public_inputs.clone()]).unwrap();
-    assert_eq!(prover.verify(), Ok(()));
+        // Prepare the private and public inputs to the circuit!
+        let c = Fp::from(1);
+        let a = Fp::from(2);
+        let b = Fp::from(3);
+        let out = c * a.square() * b.square();
+        println!("out=:{:?}", out);
 
-    // TODO: This broke when Value was introduced to replace Option. Fix it
-    // If we try some other public input, the proof will fail!
-    public_inputs[0] += Fp::one();
-    // let prover = MockProver::run(k, &circuit, vec![public_inputs]).unwrap();
-    // assert!(prover.verify().is_err());
+        // Instantiate the circuit with the private inputs.
+        let circuit = MyCircuit {
+            c,
+            a: Value::known(a),
+            b: Value::known(b),
+        };
+
+        // Arrange the public input. We expose the multiplication result in row 0
+        // of the instance column, so we position it there in our public inputs.
+        let mut public_inputs = vec![out];
+
+        // Given the correct public input, our circuit will verify.
+        let prover = MockProver::run(k, &circuit, vec![public_inputs.clone()]).unwrap();
+        assert_eq!(prover.verify(), Ok(()));
+
+        // If we try some other public input, the proof will fail!
+        let mut public_inputs_fail = public_inputs.clone();
+        public_inputs_fail[0] += Fp::one();
+        let prover = MockProver::run(k, &circuit, vec![public_inputs_fail]).unwrap();
+        assert!(prover.verify().is_err());
+        println!("\n\n\n!!!!!OHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH!!!!!\n     simple example success !\n!!!!!OHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH!!!!!\n\n\n");
+        // ANCHOR_END: test-circuit
+        let params: ParamsIPA<vesta::Affine> = ParamsIPA::new(k);
+        let vk = keygen_vk(&params, &circuit).expect("keygen_vk should not fail");
+        let pk = keygen_pk(&params, vk, &circuit).expect("keygen_pk should not fail");
+        let prover_name = format!("MT-prover");
+        let verifier_name = format!("MT-verifier");
+        let mut rng = OsRng;
+        let mut transcript = Blake2bWrite::<_, EqAffine, Challenge255<_>>::init(vec![]);
+        create_proof::<IPACommitmentScheme<_>, ProverIPA<_>, _, _, _, _>(
+                &params,
+                &pk,
+                &[circuit],
+                &[&[&public_inputs]],
+                &mut rng,
+                &mut transcript,
+            )
+            .expect("proof generation should not fail");
+        let proof = transcript.finalize();
+        println!("proof length: {}", proof.len());
+        let strategy = SingleStrategy::new(&params);
+        let mut transcript = Blake2bRead::<_, _, Challenge255<_>>::init(&proof[..]);
+            assert!(verify_proof(
+                &params,
+                pk.get_vk(),
+                strategy,
+                &[&[&public_inputs]],
+                &mut transcript
+            )
+            .is_ok());
+    }
 }
+
+
+
