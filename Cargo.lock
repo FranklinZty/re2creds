@@ -339,7 +339,7 @@ version = "0.1.0"
 dependencies = [
  "ark-std",
  "halo2_proofs",
- "halo2curves 0.3.3",
+ "halo2curves 0.6.1",
 ]
 
 [[package]]
@@ -378,24 +378,6 @@ dependencies = [
 name = "halo2curves"
 version = "0.3.2"
 source = "git+https://github.com/privacy-scaling-explorations/halo2curves?tag=0.3.2#9f5c50810bbefe779ee5cf1d852b2fe85dc35d5e"
-dependencies = [
- "ff",
- "group",
- "lazy_static",
- "num-bigint",
- "num-traits",
- "pasta_curves",
- "paste",
- "rand",
- "rand_core",
- "static_assertions",
- "subtle",
-]
-
-[[package]]
-name = "halo2curves"
-version = "0.3.3"
-source = "git+https://github.com/privacy-scaling-explorations/halo2curves.git?rev=8e4cb9f0c66c864e8ca25da07f50ae95f664a5b7#8e4cb9f0c66c864e8ca25da07f50ae95f664a5b7"
 dependencies = [
  "ff",
  "group",
