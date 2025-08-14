@@ -9,7 +9,7 @@ use halo2_proofs::halo2curves::group::Curve;
 use halo2_proofs::halo2curves::group::Group;
 use halo2_proofs::plonk::Circuit;
 use halo2_proofs::plonk::ConstraintSystem;
-use halo2_proofs::plonk::Error;
+use halo2_proofs::plonk::ErrorFront;
 use halo2curves::grumpkin::Fq;
 use halo2curves::grumpkin::Fr;
 use halo2curves::grumpkin::G1Affine;
@@ -46,7 +46,7 @@ impl Circuit<Fq> for ECTestCircuit {
         &self,
         config: Self::Config,
         mut layouter: impl Layouter<Fq>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ErrorFront> {
         let ec_chip = ECChip::construct(config.clone());
 
         layouter.assign_region(
@@ -206,7 +206,7 @@ fn test_ec_ops() {
         prover.assert_satisfied();
     }
 
-    // error case: add not equal
+    // ErrorFront case: add not equal
     {
         let p3 = (p1 + p1).to_affine();
         let circuit = ECTestCircuit {
@@ -222,7 +222,7 @@ fn test_ec_ops() {
         assert!(prover.verify().is_err());
     }
 
-    // error case: double not equal
+    // ErrorFront case: double not equal
     {
         let p4 = (p1 + p2).to_affine();
         let circuit = ECTestCircuit {

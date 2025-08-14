@@ -3,7 +3,7 @@ mod tests{
     use halo2_proofs::{
         circuit::{Layouter, SimpleFloorPlanner, Value},
         dev::MockProver,
-        plonk::{Circuit, ConstraintSystem, Error},
+        plonk::{Circuit, ConstraintSystem, ErrorFront},
     };
     use halo2curves::pasta::{pallas, Fp};
     use rand::rngs::OsRng;
@@ -67,7 +67,7 @@ mod tests{
             &self,
             config: Pow5Config<Fp, WIDTH, RATE>,
             mut layouter: impl Layouter<Fp>,
-        ) -> Result<(), Error> {
+        ) -> Result<(), ErrorFront> {
             let chip = Pow5Chip::construct(config.clone());
 
             let message = layouter.assign_region(
@@ -83,7 +83,7 @@ mod tests{
                         )
                     };
 
-                    let message: Result<Vec<_>, Error> = (0..L).map(message_word).collect();
+                    let message: Result<Vec<_>, ErrorFront> = (0..L).map(message_word).collect();
                     Ok(message?.try_into().unwrap())
                 },
             )?;

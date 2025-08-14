@@ -3,7 +3,7 @@
 
 use halo2_proofs::{
     circuit::{AssignedCell, Layouter, Region},
-    plonk::{Advice, Column, ConstraintSystem, Constraints, Error, Selector, TableColumn},
+    plonk::{Advice, Column, ConstraintSystem, Constraints, ErrorFront, Selector, TableColumn},
     poly::Rotation,
 };
 use std::{convert::TryInto, marker::PhantomData};
@@ -35,7 +35,7 @@ impl<F: PrimeFieldBits> RangeConstrained<F, AssignedCell<F, F>> {
         layouter: impl Layouter<F>,
         value: Value<&F>,
         bitrange: Range<usize>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, ErrorFront> {
         let num_bits = bitrange.len();
         assert!(num_bits < K);
 
@@ -155,7 +155,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
     // Loads the values [0..2^K) into `table_idx`. This is only used in testing
     // for now, since the Sinsemilla chip provides a pre-loaded table in the
     // Orchard context.
-    pub fn load(&self, layouter: &mut impl Layouter<F>) -> Result<(), Error> {
+    pub fn load(&self, layouter: &mut impl Layouter<F>) -> Result<(), ErrorFront> {
         layouter.assign_table(
             || "table_idx",
             |mut table| {
@@ -175,7 +175,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
 
     /// Range check on an existing cell that is copied into this helper.
     ///
-    /// Returns an error if `element` is not in a column that was passed to
+    /// Returns an ErrorFront if `element` is not in a column that was passed to
     /// [`ConstraintSystem::enable_equality`] during circuit configuration.
     pub fn copy_check(
         &self,
@@ -183,7 +183,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
         element: AssignedCell<F, F>,
         num_words: usize,
         strict: bool,
-    ) -> Result<RunningSum<F>, Error> {
+    ) -> Result<RunningSum<F>, ErrorFront> {
         layouter.assign_region(
             || format!("{:?} words range check", num_words),
             |mut region| {
@@ -201,7 +201,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
         value: Value<F>,
         num_words: usize,
         strict: bool,
-    ) -> Result<RunningSum<F>, Error> {
+    ) -> Result<RunningSum<F>, ErrorFront> {
         layouter.assign_region(
             || "Witness element",
             |mut region| {
@@ -225,7 +225,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
         element: AssignedCell<F, F>,
         num_words: usize,
         strict: bool,
-    ) -> Result<RunningSum<F>, Error> {
+    ) -> Result<RunningSum<F>, ErrorFront> {
         // `num_words` must fit into a single field element.
         assert!(num_words * K <= F::CAPACITY as usize);
         let num_bits = num_words * K;
@@ -301,7 +301,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
         mut layouter: impl Layouter<F>,
         element: AssignedCell<F, F>,
         num_bits: usize,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ErrorFront> {
         assert!(num_bits < K);
         layouter.assign_region(
             || format!("Range check {:?} bits", num_bits),
@@ -325,7 +325,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
         mut layouter: impl Layouter<F>,
         element: Value<F>,
         num_bits: usize,
-    ) -> Result<AssignedCell<F, F>, Error> {
+    ) -> Result<AssignedCell<F, F>, ErrorFront> {
         assert!(num_bits <= K);
         layouter.assign_region(
             || format!("Range check {:?} bits", num_bits),
@@ -349,7 +349,7 @@ impl<F: PrimeFieldBits, const K: usize> LookupRangeCheckConfig<F, K> {
         region: &mut Region<'_, F>,
         element: AssignedCell<F, F>,
         num_bits: usize,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ErrorFront> {
         // Enable lookup for `element`, to constrain it to 10 bits.
         self.q_lookup.enable(region, 0)?;
 
@@ -393,7 +393,7 @@ mod tests {
     use halo2_proofs::{
         circuit::{Layouter, SimpleFloorPlanner, Value},
         dev::{FailureLocation, MockProver, VerifyFailure},
-        plonk::{Circuit, ConstraintSystem, Error},
+        plonk::{Circuit, ConstraintSystem, ErrorFront},
     };
     use halo2curves::pasta::pallas;
 
@@ -430,7 +430,7 @@ mod tests {
                 &self,
                 config: Self::Config,
                 mut layouter: impl Layouter<F>,
-            ) -> Result<(), Error> {
+            ) -> Result<(), ErrorFront> {
                 // Load table_idx
                 config.load(&mut layouter)?;
 
@@ -531,7 +531,7 @@ mod tests {
                 &self,
                 config: Self::Config,
                 mut layouter: impl Layouter<F>,
-            ) -> Result<(), Error> {
+            ) -> Result<(), ErrorFront> {
                 // Load table_idx
                 config.load(&mut layouter)?;
 

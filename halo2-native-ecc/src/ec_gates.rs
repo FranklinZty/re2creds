@@ -4,7 +4,7 @@ use halo2_proofs::circuit::Value;
 use halo2_proofs::halo2curves::ff::PrimeField;
 use halo2_proofs::halo2curves::group::Curve;
 use halo2_proofs::halo2curves::CurveAffine;
-use halo2_proofs::plonk::Error;
+use halo2_proofs::plonk::ErrorFront;
 
 use crate::chip::ECChip;
 use crate::config::ECConfig;
@@ -37,7 +37,7 @@ where
         config: &Self::Config,
         p: &C,
         offset: &mut usize,
-    ) -> Result<Self::AssignedECPoint, Error> {
+    ) -> Result<Self::AssignedECPoint, ErrorFront> {
         let p = self.load_private_point_unchecked(region, config, p, offset)?;
         self.enforce_on_curve(region, config, &p, offset)?;
         Ok(p)
@@ -53,7 +53,7 @@ where
         config: &Self::Config,
         p: &C,
         offset: &mut usize,
-    ) -> Result<Self::AssignedECPoint, Error>;
+    ) -> Result<Self::AssignedECPoint, ErrorFront>;
 
     /// For an input pair (x, y), enforces the point is on curve.
     fn enforce_on_curve(
@@ -62,7 +62,7 @@ where
         config: &Self::Config,
         p: &Self::AssignedECPoint,
         offset: &mut usize,
-    ) -> Result<(), Error>;
+    ) -> Result<(), ErrorFront>;
 
     /// Input p1 and p2 that are on the curve.
     /// Input an additional bit b.
@@ -80,7 +80,7 @@ where
         p2: &Self::AssignedECPoint,
         b: &AssignedCell<F, F>,
         offset: &mut usize,
-    ) -> Result<Self::AssignedECPoint, Error>;
+    ) -> Result<Self::AssignedECPoint, ErrorFront>;
 
     /// Return p2 = p1 + p1
     fn point_double(
@@ -89,7 +89,7 @@ where
         config: &Self::Config,
         p1: &Self::AssignedECPoint,
         offset: &mut usize,
-    ) -> Result<Self::AssignedECPoint, Error>;
+    ) -> Result<Self::AssignedECPoint, ErrorFront>;
 
     /// Decompose a scalar into a vector of boolean Cells
     fn decompose_scalar<S>(
@@ -98,7 +98,7 @@ where
         config: &Self::Config,
         s: &C::ScalarExt,
         offset: &mut usize,
-    ) -> Result<Vec<AssignedCell<F, F>>, Error>
+    ) -> Result<Vec<AssignedCell<F, F>>, ErrorFront>
     where
         S: PrimeField<Repr = [u8; 32]>,
         C: CurveAffine<ScalarExt = S>;
@@ -111,7 +111,7 @@ where
         p: &C,
         s: &C::ScalarExt,
         offset: &mut usize,
-    ) -> Result<Self::AssignedECPoint, Error>
+    ) -> Result<Self::AssignedECPoint, ErrorFront>
     where
         S: PrimeField<Repr = [u8; 32]>,
         C: CurveAffine<ScalarExt = S>;
@@ -122,7 +122,7 @@ where
         region: &mut Region<F>,
         config: &Self::Config,
         offset: &mut usize,
-    ) -> Result<(), Error>;
+    ) -> Result<(), ErrorFront>;
 }
 
 impl<C, F> NativeECOps<C, F> for ECChip<C, F>
@@ -143,7 +143,7 @@ where
         config: &Self::Config,
         p: &C,
         offset: &mut usize,
-    ) -> Result<Self::AssignedECPoint, Error> {
+    ) -> Result<Self::AssignedECPoint, ErrorFront> {
         let p = p.coordinates().unwrap();
         let x = region.assign_advice(|| "x", config.a, *offset, || Value::known(*p.x()))?;
         let y = region.assign_advice(|| "y", config.b, *offset, || Value::known(*p.y()))?;
@@ -160,7 +160,7 @@ where
         config: &Self::Config,
         p: &Self::AssignedECPoint,
         offset: &mut usize,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ErrorFront> {
         assert_eq!(
             p.offset,
             *offset - 1,
@@ -201,7 +201,7 @@ where
         p2: &Self::AssignedECPoint,
         b: &AssignedCell<F, F>,
         offset: &mut usize,
-    ) -> Result<Self::AssignedECPoint, Error> {
+    ) -> Result<Self::AssignedECPoint, ErrorFront> {
         //  index  |  a   |  b
         //  -------|------|------
         //         | p1.x | p1.y
@@ -250,7 +250,7 @@ where
         config: &Self::Config,
         p1: &Self::AssignedECPoint,
         offset: &mut usize,
-    ) -> Result<Self::AssignedECPoint, Error> {
+    ) -> Result<Self::AssignedECPoint, ErrorFront> {
         assert_eq!(
             p1.offset,
             *offset - 1,
@@ -284,7 +284,7 @@ where
         config: &Self::Config,
         s: &C::ScalarExt,
         offset: &mut usize,
-    ) -> Result<Vec<AssignedCell<F, F>>, Error>
+    ) -> Result<Vec<AssignedCell<F, F>>, ErrorFront>
     where
         S: PrimeField<Repr = [u8; 32]>,
         C: CurveAffine<ScalarExt = S>,
@@ -306,7 +306,7 @@ where
         p: &C,
         s: &C::ScalarExt,
         offset: &mut usize,
-    ) -> Result<Self::AssignedECPoint, Error>
+    ) -> Result<Self::AssignedECPoint, ErrorFront>
     where
         S: PrimeField<Repr = [u8; 32]>,
         C: CurveAffine<ScalarExt = S>,
@@ -383,7 +383,7 @@ where
         region: &mut Region<F>,
         config: &Self::Config,
         offset: &mut usize,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ErrorFront> {
         region.assign_advice(|| "pad", config.a, *offset, || Value::known(F::ZERO))?;
         region.assign_advice(|| "pad", config.b, *offset, || Value::known(F::ZERO))?;
         region.assign_advice(|| "pad", config.a, *offset + 1, || Value::known(F::ZERO))?;

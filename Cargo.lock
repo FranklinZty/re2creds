@@ -339,7 +339,47 @@ version = "0.1.0"
 dependencies = [
  "ark-std",
  "halo2_proofs",
- "halo2curves 0.6.1",
+ "halo2curves",
+]
+
+[[package]]
+name = "halo2_backend"
+version = "0.3.0"
+source = "git+https://github.com/binsc/halo2.git#64b67e4a7754f7c0aafc8b7b60690fca90127c35"
+dependencies = [
+ "blake2b_simd",
+ "ff",
+ "group",
+ "halo2_middleware",
+ "halo2curves",
+ "rand_chacha",
+ "rand_core",
+ "rayon",
+ "sha3",
+ "tracing",
+]
+
+[[package]]
+name = "halo2_frontend"
+version = "0.3.0"
+source = "git+https://github.com/binsc/halo2.git#64b67e4a7754f7c0aafc8b7b60690fca90127c35"
+dependencies = [
+ "blake2b_simd",
+ "ff",
+ "group",
+ "halo2_middleware",
+ "halo2curves",
+ "tracing",
+]
+
+[[package]]
+name = "halo2_middleware"
+version = "0.3.0"
+source = "git+https://github.com/binsc/halo2.git#64b67e4a7754f7c0aafc8b7b60690fca90127c35"
+dependencies = [
+ "ff",
+ "halo2curves",
+ "rayon",
 ]
 
 [[package]]
@@ -351,7 +391,7 @@ dependencies = [
  "ff",
  "group",
  "halo2_proofs",
- "halo2curves 0.6.1",
+ "halo2curves",
  "lazy_static",
  "rand",
  "subtle",
@@ -360,36 +400,15 @@ dependencies = [
 
 [[package]]
 name = "halo2_proofs"
-version = "0.2.0"
-source = "git+https://github.com/privacy-scaling-explorations/halo2.git?tag=v2023_04_20#be955686f86eb618f55d2320c0e042485b313d22"
+version = "0.3.0"
+source = "git+https://github.com/binsc/halo2.git#64b67e4a7754f7c0aafc8b7b60690fca90127c35"
 dependencies = [
- "blake2b_simd",
- "ff",
  "group",
- "halo2curves 0.3.2",
- "rand_chacha",
+ "halo2_backend",
+ "halo2_frontend",
+ "halo2_middleware",
+ "halo2curves",
  "rand_core",
- "rayon",
- "sha3",
- "tracing",
-]
-
-[[package]]
-name = "halo2curves"
-version = "0.3.2"
-source = "git+https://github.com/privacy-scaling-explorations/halo2curves?tag=0.3.2#9f5c50810bbefe779ee5cf1d852b2fe85dc35d5e"
-dependencies = [
- "ff",
- "group",
- "lazy_static",
- "num-bigint",
- "num-traits",
- "pasta_curves",
- "paste",
- "rand",
- "rand_core",
- "static_assertions",
- "subtle",
 ]
 
 [[package]]
@@ -703,7 +722,7 @@ dependencies = [
  "halo2-native-ecc",
  "halo2_poseidon",
  "halo2_proofs",
- "halo2curves 0.6.1",
+ "halo2curves",
  "rand",
  "rand_core",
 ]

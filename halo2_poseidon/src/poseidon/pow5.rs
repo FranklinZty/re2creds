@@ -5,7 +5,7 @@ use halo2_proofs::{
     arithmetic::Field,
     circuit::{AssignedCell, Cell, Chip, Layouter, Region, Value},
     plonk::{
-        Advice, Any, Column, ConstraintSystem, Constraints, Error, Expression, Fixed, Selector,
+        Advice, Any, Column, ConstraintSystem, Constraints, ErrorFront, Expression, Fixed, Selector,
     },
     poly::Rotation,
 };
@@ -232,7 +232,7 @@ impl<F: Field, S: Spec<F, WIDTH, RATE>, const WIDTH: usize, const RATE: usize>
         &self,
         layouter: &mut impl Layouter<F>,
         initial_state: &State<Self::Word, WIDTH>,
-    ) -> Result<State<Self::Word, WIDTH>, Error> {
+    ) -> Result<State<Self::Word, WIDTH>, ErrorFront> {
         let config = self.config();
 
         layouter.assign_region(
@@ -279,13 +279,13 @@ impl<
     fn initial_state(
         &self,
         layouter: &mut impl Layouter<F>,
-    ) -> Result<State<Self::Word, WIDTH>, Error> {
+    ) -> Result<State<Self::Word, WIDTH>, ErrorFront> {
         let config = self.config();
         let state = layouter.assign_region(
             || format!("initial state for domain {}", D::name()),
             |mut region| {
                 let mut state = Vec::with_capacity(WIDTH);
-                let mut load_state_word = |i: usize, value: F| -> Result<_, Error> {
+                let mut load_state_word = |i: usize, value: F| -> Result<_, ErrorFront> {
                     let var = region.assign_advice_from_constant(
                         || format!("state_{i}"),
                         config.state[i],
@@ -314,7 +314,7 @@ impl<
         layouter: &mut impl Layouter<F>,
         initial_state: &State<Self::Word, WIDTH>,
         input: &Absorbing<PaddedWord<F>, RATE>,
-    ) -> Result<State<Self::Word, WIDTH>, Error> {
+    ) -> Result<State<Self::Word, WIDTH>, ErrorFront> {
         let config = self.config();
         layouter.assign_region(
             || format!("add input for domain {}", D::name()),
@@ -333,7 +333,7 @@ impl<
                         )
                         .map(StateWord)
                 };
-                let initial_state: Result<Vec<_>, Error> =
+                let initial_state: Result<Vec<_>, ErrorFront> =
                     (0..WIDTH).map(load_state_word).collect();
                 let initial_state = initial_state?;
 
@@ -358,7 +358,7 @@ impl<
                         )
                         .map(StateWord)
                 };
-                let input: Result<Vec<_>, Error> = (0..RATE).map(load_input_word).collect();
+                let input: Result<Vec<_>, ErrorFront> = (0..RATE).map(load_input_word).collect();
                 let input = input?;
 
                 // Constrain the output.
@@ -374,7 +374,7 @@ impl<
                         .map(StateWord)
                 };
 
-                let output: Result<Vec<_>, Error> = (0..WIDTH).map(constrain_output_word).collect();
+                let output: Result<Vec<_>, ErrorFront> = (0..WIDTH).map(constrain_output_word).collect();
                 output.map(|output| output.try_into().unwrap())
             },
         )
@@ -428,7 +428,7 @@ impl<F: Field, const WIDTH: usize> Pow5State<F, WIDTH> {
         config: &Pow5Config<F, WIDTH, RATE>,
         round: usize,
         offset: usize,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, ErrorFront> {
         Self::round(region, config, round, offset, config.s_full, |_| {
             let q = self.0.iter().enumerate().map(|(idx, word)| {
                 word.0
@@ -455,7 +455,7 @@ impl<F: Field, const WIDTH: usize> Pow5State<F, WIDTH> {
         config: &Pow5Config<F, WIDTH, RATE>,
         round: usize,
         offset: usize,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, ErrorFront> {
         Self::round(region, config, round, offset, config.s_partial, |region| {
             let m = &config.m_reg;
             let p: Value<Vec<_>> = self.0.iter().map(|word| word.0.value().cloned()).collect();
@@ -528,7 +528,7 @@ impl<F: Field, const WIDTH: usize> Pow5State<F, WIDTH> {
         region: &mut Region<F>,
         config: &Pow5Config<F, WIDTH, RATE>,
         initial_state: &State<StateWord<F>, WIDTH>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, ErrorFront> {
         let load_state_word = |i: usize| {
             initial_state[i]
                 .0
@@ -546,8 +546,8 @@ impl<F: Field, const WIDTH: usize> Pow5State<F, WIDTH> {
         round: usize,
         offset: usize,
         round_gate: Selector,
-        round_fn: impl FnOnce(&mut Region<F>) -> Result<(usize, [Value<F>; WIDTH]), Error>,
-    ) -> Result<Self, Error> {
+        round_fn: impl FnOnce(&mut Region<F>) -> Result<(usize, [Value<F>; WIDTH]), ErrorFront>,
+    ) -> Result<Self, ErrorFront> {
         // Enable the required gate.
         round_gate.enable(region, offset)?;
 
@@ -589,7 +589,7 @@ mod tests {
     use halo2_proofs::{
         circuit::{Layouter, SimpleFloorPlanner, Value},
         dev::MockProver,
-        plonk::{Circuit, ConstraintSystem, Error},
+        plonk::{Circuit, ConstraintSystem, ErrorFront},
     };
     use halo2curves::pasta::{pallas, Fp};
     use rand::rngs::OsRng;
@@ -638,7 +638,7 @@ mod tests {
             &self,
             config: Pow5Config<Fp, WIDTH, RATE>,
             mut layouter: impl Layouter<Fp>,
-        ) -> Result<(), Error> {
+        ) -> Result<(), ErrorFront> {
             let initial_state = layouter.assign_region(
                 || "prepare initial state",
                 |mut region| {
@@ -653,7 +653,7 @@ mod tests {
                         Ok(StateWord(var))
                     };
 
-                    let state: Result<Vec<_>, Error> = (0..WIDTH).map(state_word).collect();
+                    let state: Result<Vec<_>, ErrorFront> = (0..WIDTH).map(state_word).collect();
                     Ok(state?.try_into().unwrap())
                 },
             )?;
@@ -761,7 +761,7 @@ mod tests {
             &self,
             config: Pow5Config<Fp, WIDTH, RATE>,
             mut layouter: impl Layouter<Fp>,
-        ) -> Result<(), Error> {
+        ) -> Result<(), ErrorFront> {
             let chip = Pow5Chip::construct(config.clone());
 
             let message = layouter.assign_region(
@@ -777,7 +777,7 @@ mod tests {
                         )
                     };
 
-                    let message: Result<Vec<_>, Error> = (0..L).map(message_word).collect();
+                    let message: Result<Vec<_>, ErrorFront> = (0..L).map(message_word).collect();
                     Ok(message?.try_into().unwrap())
                 },
             )?;

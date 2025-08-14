@@ -1,6 +1,6 @@
-mod TutorialCircuit;
-mod poseidonSample;
+
 mod ECCSample;
+mod PoseidonSample;
 fn main() {
     println!("Hello, world!");
 }

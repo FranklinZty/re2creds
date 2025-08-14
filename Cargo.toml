@@ -4,8 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-halo2_proofs = { git = "https://github.com/privacy-scaling-explorations/halo2.git", tag = "v2023_04_20" }
-# halo2_gadgets = {version = "0.3.1", features = ["unstable-sha256-gadget"]}
+halo2_proofs = { git = "https://github.com/binsc/halo2.git" }
 bitvec = "1.0.1"
 halo2curves = { version = "0.6.1" }
 criterion = "0.5.1"

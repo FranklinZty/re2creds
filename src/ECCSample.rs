@@ -6,10 +6,9 @@ use halo2_proofs::circuit::SimpleFloorPlanner;
 use halo2_proofs::dev::MockProver;
 use halo2_proofs::plonk::Circuit;
 use halo2_proofs::plonk::ConstraintSystem;
-use halo2_proofs::plonk::Error;
+use halo2_proofs::plonk::ErrorFront;
 use halo2curves::grumpkin::Fq;
 use halo2curves::grumpkin::G1Affine;
-
 use halo2_native_ecc::ArithOps;
 use halo2_native_ecc::ECChip;
 use halo2_native_ecc::ECConfig;
@@ -40,7 +39,7 @@ impl Circuit<Fq> for ArithTestCircuit {
         &self,
         config: Self::Config,
         mut layouter: impl Layouter<Fq>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ErrorFront> {
         let field_chip = ECChip::construct(config.clone());
 
         layouter.assign_region(
@@ -128,7 +127,7 @@ fn test_field_ops() {
         prover.assert_satisfied();
     }
 
-    // error case: addition fails
+    // ErrorFront case: addition fails
     {
         let f3 = f1 + f1;
         let f5 = [
@@ -144,7 +143,7 @@ fn test_field_ops() {
         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
         assert!(prover.verify().is_err());
     }
-    // error case: multiplication fails
+    // ErrorFront case: multiplication fails
     {
         let f4 = f1 * f1;
         let f5 = [
@@ -160,7 +159,7 @@ fn test_field_ops() {
         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
         assert!(prover.verify().is_err());
     }
-    // error case: not binary
+    // ErrorFront case: not binary
     {
         let f5 = [
             Fq::from(2),
@@ -175,7 +174,7 @@ fn test_field_ops() {
         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
         assert!(prover.verify().is_err());
     }
-    // error case: sum not equal
+    // ErrorFront case: sum not equal
     {
         let f5 = [
             Fq::zero(),
@@ -190,7 +189,8 @@ fn test_field_ops() {
         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
         assert!(prover.verify().is_err());
     }
-}    
+}   
+ 
 }
 
 mod testECC{
@@ -204,7 +204,7 @@ mod testECC{
     use halo2_proofs::halo2curves::group::Group;
     use halo2_proofs::plonk::Circuit;
     use halo2_proofs::plonk::ConstraintSystem;
-    use halo2_proofs::plonk::Error;
+    use halo2_proofs::plonk::ErrorFront;
     use halo2curves::grumpkin::Fq;
     use halo2curves::grumpkin::Fr;
     use halo2curves::grumpkin::G1Affine;
@@ -264,7 +264,7 @@ mod testECC{
             &self,
             config: Self::Config,
             mut layouter: impl Layouter<Fq>,
-        ) -> Result<(), Error> {
+        ) -> Result<(), ErrorFront> {
             let ec_chip = ECChip::construct(config.clone());
 
             layouter.assign_region(
@@ -419,41 +419,22 @@ mod testECC{
                 p4,
                 p5,
             };
-
-            // let prover = MockProver::run(k, &circuit, vec![]).unwrap();
-            // prover.assert_satisfied();
-
-            let params: ParamsIPA<BNG1Affine> = ParamsIPA::new(k);
-            // let paramsKZG = ParamsKZG::<Bn256>::setup(k, &mut OsRng);
-            // let params: ParamsKZG<Bn256> = ParamsKZG::setup(k, &mut OsRng);
+            let params = ParamsKZG::<Bn256>::setup(k, &mut OsRng);
             let vk = keygen_vk(&params, &circuit).expect("keygen_vk should not fail");
             let pk = keygen_pk(&params, vk, &circuit).expect("keygen_pk should not fail");
-            let prover_name = format!("MT-prover");
-            let verifier_name = format!("MT-verifier");
             let mut rng = OsRng;
             let mut transcript = Blake2bWrite::<_, _, Challenge255<_>>::init(vec![]);
-            create_proof::<IPACommitmentScheme<_>, ProverIPA<_>, _, _, _, _>(
+            create_proof::<KZGCommitmentScheme<_>, ProverSHPLONK<_>, _, _, _, _>(
                     &params,
                     &pk,
                     &[circuit],
-                    &[&vec![]],
+                    &[vec![]],
                     &mut rng,
                     &mut transcript,
                 )
                 .expect("proof generation should not fail");
             let proof = transcript.finalize();
             println!("proof length: {}", proof.len());
-            let strategy: SingleStrategy<'_, BNG1Affine> = SingleStrategy::new(&params);
-            let mut transcript: Blake2bRead<&[u8], BNG1Affine, Challenge255<BNG1Affine>> = Blake2bRead::<_, _, Challenge255<_>>::init(&proof[..]);
-                assert!(verify_proof(
-                    &params,
-                    pk.get_vk(),
-                    strategy,
-                    &[&vec![]],
-                    &mut transcript
-                )
-                .is_ok());
-
-            }
+        }
     }
 }

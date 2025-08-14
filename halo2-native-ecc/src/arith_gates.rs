@@ -4,7 +4,7 @@ use halo2_proofs::circuit::Region;
 use halo2_proofs::circuit::Value;
 use halo2_proofs::halo2curves::ff::PrimeField;
 use halo2_proofs::halo2curves::CurveAffine;
-use halo2_proofs::plonk::Error;
+use halo2_proofs::plonk::ErrorFront;
 
 use crate::ECChip;
 use crate::ECConfig;
@@ -22,7 +22,7 @@ pub trait ArithOps<F: Field> {
         config: &Self::Config,
         f: &F,
         offset: &mut usize,
-    ) -> Result<AssignedCell<F, F>, Error>;
+    ) -> Result<AssignedCell<F, F>, ErrorFront>;
 
     /// Load two private field elements
     fn load_two_private_fields(
@@ -32,7 +32,7 @@ pub trait ArithOps<F: Field> {
         f1: &F,
         f2: &F,
         offset: &mut usize,
-    ) -> Result<[AssignedCell<F, F>; 2], Error>;
+    ) -> Result<[AssignedCell<F, F>; 2], ErrorFront>;
 
     /// Add two cells and return the sum
     fn add(
@@ -42,7 +42,7 @@ pub trait ArithOps<F: Field> {
         a: &F,
         b: &F,
         offset: &mut usize,
-    ) -> Result<AssignedCell<F, F>, Error>;
+    ) -> Result<AssignedCell<F, F>, ErrorFront>;
 
     /// Multiply two cells and return the product
     fn mul(
@@ -52,7 +52,7 @@ pub trait ArithOps<F: Field> {
         a: &F,
         b: &F,
         offset: &mut usize,
-    ) -> Result<AssignedCell<F, F>, Error>;
+    ) -> Result<AssignedCell<F, F>, ErrorFront>;
 
     /// Input x1, y1, x2, y2, x3, y3
     /// Assert that
@@ -64,7 +64,7 @@ pub trait ArithOps<F: Field> {
         config: &Self::Config,
         inputs: &[F],
         offset: &mut usize,
-    ) -> Result<Vec<AssignedCell<F, F>>, Error>;
+    ) -> Result<Vec<AssignedCell<F, F>>, ErrorFront>;
 
     /// Input a u128,
     /// Output
@@ -77,7 +77,7 @@ pub trait ArithOps<F: Field> {
         config: &Self::Config,
         input: &u128,
         offset: &mut usize,
-    ) -> Result<(Vec<AssignedCell<F, F>>, AssignedCell<F, F>), Error>;
+    ) -> Result<(Vec<AssignedCell<F, F>>, AssignedCell<F, F>), ErrorFront>;
 }
 
 impl<C, F> ArithOps<F> for ECChip<C, F>
@@ -94,7 +94,7 @@ where
         config: &Self::Config,
         f: &F,
         offset: &mut usize,
-    ) -> Result<AssignedCell<F, F>, Error> {
+    ) -> Result<AssignedCell<F, F>, ErrorFront> {
         let res = region.assign_advice(|| "field element", config.a, *offset, || Value::known(*f));
         let _ = region.assign_advice(
             || "field element",
@@ -115,7 +115,7 @@ where
         f1: &F,
         f2: &F,
         offset: &mut usize,
-    ) -> Result<[AssignedCell<F, F>; 2], Error> {
+    ) -> Result<[AssignedCell<F, F>; 2], ErrorFront> {
         let a =
             region.assign_advice(|| "field element", config.a, *offset, || Value::known(*f1))?;
         let b =
@@ -133,7 +133,7 @@ where
         a: &F,
         b: &F,
         offset: &mut usize,
-    ) -> Result<AssignedCell<F, F>, Error> {
+    ) -> Result<AssignedCell<F, F>, ErrorFront> {
         // |         add |   2  |       0      | 0  | 1  | 0  | a1 = a0 + b0
         config.q2.enable(region, *offset)?;
         region.assign_advice(|| "field element", config.a, *offset, || Value::known(*a))?;
@@ -165,7 +165,7 @@ where
         a: &F,
         b: &F,
         offset: &mut usize,
-    ) -> Result<AssignedCell<F, F>, Error> {
+    ) -> Result<AssignedCell<F, F>, ErrorFront> {
         // |         mul |   2  |       0      | 0  | 0  | 1  | a1 = a0 * b0
         config.q3.enable(region, *offset)?;
         region.assign_advice(|| "field element", config.a, *offset, || Value::known(*a))?;
@@ -199,7 +199,7 @@ where
         config: &Self::Config,
         inputs: &[F],
         offset: &mut usize,
-    ) -> Result<Vec<AssignedCell<F, F>>, Error> {
+    ) -> Result<Vec<AssignedCell<F, F>>, ErrorFront> {
         assert_eq!(inputs.len(), 6, "input length is not 6");
 
         let mut res = vec![];
@@ -247,7 +247,7 @@ where
         config: &Self::Config,
         input: &u128,
         offset: &mut usize,
-    ) -> Result<(Vec<AssignedCell<F, F>>, AssignedCell<F, F>), Error> {
+    ) -> Result<(Vec<AssignedCell<F, F>>, AssignedCell<F, F>), ErrorFront> {
         let input_le_vec = crate::util::decompose_u128(input);
         let input_field_vec = input_le_vec
             .iter()

@@ -4,7 +4,7 @@ use super::{bool_check, ternary, UtilitiesInstructions};
 use ff::{Field, PrimeField};
 use halo2_proofs::{
     circuit::{AssignedCell, Chip, Layouter, Value},
-    plonk::{Advice, Column, ConstraintSystem, Constraints, Error, Selector},
+    plonk::{Advice, Column, ConstraintSystem, Constraints, ErrorFront, Selector},
     poly::Rotation,
 };
 use std::marker::PhantomData;
@@ -22,7 +22,7 @@ pub trait CondSwapInstructions<F: Field>: UtilitiesInstructions<F> {
         layouter: impl Layouter<F>,
         pair: (Self::Var, Value<F>),
         swap: Value<bool>,
-    ) -> Result<(Self::Var, Self::Var), Error>;
+    ) -> Result<(Self::Var, Self::Var), ErrorFront>;
 }
 
 /// A chip implementing a conditional swap.
@@ -67,7 +67,7 @@ impl<F: PrimeField> CondSwapInstructions<F> for CondSwapChip<F> {
         mut layouter: impl Layouter<F>,
         pair: (Self::Var, Value<F>),
         swap: Value<bool>,
-    ) -> Result<(Self::Var, Self::Var), Error> {
+    ) -> Result<(Self::Var, Self::Var), ErrorFront> {
         let config = self.config();
 
         layouter.assign_region(
@@ -193,7 +193,7 @@ mod tests {
     use halo2_proofs::{
         circuit::{Layouter, SimpleFloorPlanner, Value},
         dev::MockProver,
-        plonk::{Circuit, ConstraintSystem, Error},
+        plonk::{Circuit, ConstraintSystem, ErrorFront},
     };
     use halo2curves::pasta::pallas::Base;
     use rand::rngs::OsRng;
@@ -233,7 +233,7 @@ mod tests {
                 &self,
                 config: Self::Config,
                 mut layouter: impl Layouter<F>,
-            ) -> Result<(), Error> {
+            ) -> Result<(), ErrorFront> {
                 let chip = CondSwapChip::<F>::construct(config.clone());
 
                 // Load the pair and the swap flag into the circuit.

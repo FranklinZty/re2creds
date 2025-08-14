@@ -5,7 +5,7 @@ use halo2_proofs::circuit::SimpleFloorPlanner;
 use halo2_proofs::dev::MockProver;
 use halo2_proofs::plonk::Circuit;
 use halo2_proofs::plonk::ConstraintSystem;
-use halo2_proofs::plonk::Error;
+use halo2_proofs::plonk::ErrorFront;
 use halo2curves::grumpkin::Fq;
 use halo2curves::grumpkin::G1Affine;
 
@@ -39,7 +39,7 @@ impl Circuit<Fq> for ArithTestCircuit {
         &self,
         config: Self::Config,
         mut layouter: impl Layouter<Fq>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), ErrorFront> {
         let field_chip = ECChip::construct(config.clone());
 
         layouter.assign_region(
@@ -127,7 +127,7 @@ fn test_field_ops() {
         prover.assert_satisfied();
     }
 
-    // error case: addition fails
+    // ErrorFront case: addition fails
     {
         let f3 = f1 + f1;
         let f5 = [
@@ -143,7 +143,7 @@ fn test_field_ops() {
         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
         assert!(prover.verify().is_err());
     }
-    // error case: multiplication fails
+    // ErrorFront case: multiplication fails
     {
         let f4 = f1 * f1;
         let f5 = [
@@ -159,7 +159,7 @@ fn test_field_ops() {
         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
         assert!(prover.verify().is_err());
     }
-    // error case: not binary
+    // ErrorFront case: not binary
     {
         let f5 = [
             Fq::from(2),
@@ -174,7 +174,7 @@ fn test_field_ops() {
         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
         assert!(prover.verify().is_err());
     }
-    // error case: sum not equal
+    // ErrorFront case: sum not equal
     {
         let f5 = [
             Fq::zero(),
