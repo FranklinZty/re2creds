@@ -222,14 +222,9 @@ mod testECC{
             commitment::ParamsProver,
             kzg::{
                 commitment::{KZGCommitmentScheme, ParamsKZG},
-                multiopen::ProverSHPLONK,
-            },
-            ipa::{
-                commitment::{IPACommitmentScheme, ParamsIPA},
-                multiopen::ProverIPA,
+                multiopen::{ProverSHPLONK,VerifierSHPLONK},
                 strategy::SingleStrategy,
             },
-            VerificationStrategy,
         },
         transcript::{
             Blake2bRead, Blake2bWrite, Challenge255, TranscriptReadBuffer, TranscriptWriterBuffer,
@@ -420,10 +415,12 @@ mod testECC{
                 p5,
             };
             let params = ParamsKZG::<Bn256>::setup(k, &mut OsRng);
+            let verifier_params = params.verifier_params();
             let vk = keygen_vk(&params, &circuit).expect("keygen_vk should not fail");
+            let vk2 = keygen_vk(&params, &circuit).expect("keygen_vk should not fail");
             let pk = keygen_pk(&params, vk, &circuit).expect("keygen_pk should not fail");
             let mut rng = OsRng;
-            let mut transcript = Blake2bWrite::<_, _, Challenge255<_>>::init(vec![]);
+            let mut transcript = Blake2bWrite::<_, BNG1Affine, Challenge255<_>>::init(vec![]);
             create_proof::<KZGCommitmentScheme<_>, ProverSHPLONK<_>, _, _, _, _>(
                     &params,
                     &pk,
@@ -435,6 +432,19 @@ mod testECC{
                 .expect("proof generation should not fail");
             let proof = transcript.finalize();
             println!("proof length: {}", proof.len());
+
+            // Verify
+            let mut verifier_transcript =
+                Blake2bRead::<_, _, Challenge255<_>>::init(proof.as_slice());
+            let strategy = SingleStrategy::new(&verifier_params);
+
+            assert!(verify_proof::<KZGCommitmentScheme<Bn256>, VerifierSHPLONK<Bn256>, _, _, _>(
+                &verifier_params,
+                &vk2,
+                strategy,
+                &[vec![]],
+                &mut verifier_transcript,
+            ).is_ok());
         }
     }
 }
