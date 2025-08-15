@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 
-use halo2_proofs::arithmetic::Field;
-use halo2_proofs::halo2curves::ff::PrimeField;
+use ff::Field;
+use ff::PrimeField;
 use halo2_proofs::halo2curves::CurveAffine;
 use halo2_proofs::plonk::Advice;
 use halo2_proofs::plonk::Column;

@@ -1,8 +1,8 @@
-use halo2_proofs::arithmetic::Field;
+use ff::Field;
 use halo2_proofs::circuit::AssignedCell;
 use halo2_proofs::circuit::Region;
 use halo2_proofs::circuit::Value;
-use halo2_proofs::halo2curves::ff::PrimeField;
+use ff::PrimeField;
 use halo2_proofs::halo2curves::CurveAffine;
 use halo2_proofs::plonk::ErrorFront;
 

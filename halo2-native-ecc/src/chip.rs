@@ -1,8 +1,8 @@
 use std::marker::PhantomData;
 
-use halo2_proofs::arithmetic::Field;
+use ff::Field;
 use halo2_proofs::circuit::Chip;
-use halo2_proofs::halo2curves::ff::PrimeField;
+use ff::PrimeField;
 use halo2_proofs::halo2curves::CurveAffine;
 use halo2_proofs::plonk::ConstraintSystem;
 use halo2_proofs::plonk::Expression;

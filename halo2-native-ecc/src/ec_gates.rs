@@ -1,7 +1,7 @@
 use halo2_proofs::circuit::AssignedCell;
 use halo2_proofs::circuit::Region;
 use halo2_proofs::circuit::Value;
-use halo2_proofs::halo2curves::ff::PrimeField;
+use ff::PrimeField;
 use halo2_proofs::halo2curves::group::Curve;
 use halo2_proofs::halo2curves::CurveAffine;
 use halo2_proofs::plonk::ErrorFront;
@@ -311,11 +311,11 @@ where
         S: PrimeField<Repr = [u8; 32]>,
         C: CurveAffine<ScalarExt = S>,
     {
-        let gen = C::generator();
+        let generator = C::generator();
         let bits = self.decompose_scalar(region, config, s, offset)?;
 
         let p_assigned = self.load_private_point(region, config, p, offset)?;
-        let gen_assigned = self.load_private_point(region, config, &gen, offset)?;
+        let gen_assigned = self.load_private_point(region, config, &generator, offset)?;
 
         // we do not have a cell representation for infinity point
         // therefore we first compute
@@ -339,7 +339,7 @@ where
                     p_copied
                 } else {
                     // the point here doesn't matter but we do need to fill in the cells
-                    self.load_private_point_unchecked(region, config, &gen, offset)?
+                    self.load_private_point_unchecked(region, config, &generator, offset)?
                 };
 
                 // copy the bit cell; already constraint `bit` is either 0 or 1

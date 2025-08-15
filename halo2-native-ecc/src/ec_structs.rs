@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use halo2_proofs::arithmetic::Field;
+use ff::Field;
 use halo2_proofs::circuit::AssignedCell;
 use halo2_proofs::halo2curves::CurveAffine;
 

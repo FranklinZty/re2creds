@@ -1,7 +1,7 @@
 use std::u128;
 
 use halo2_proofs::circuit::Value;
-use halo2_proofs::halo2curves::ff::PrimeField;
+use ff::PrimeField;
 use halo2curves::CurveAffine;
 
 pub(crate) fn leak<T: Copy + Default>(a: &Value<&T>) -> T {
