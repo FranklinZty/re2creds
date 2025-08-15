@@ -1,3 +1,4 @@
+mod testArith{
 use ark_std::test_rng;
 use halo2_proofs::arithmetic::Field;
 use halo2_proofs::circuit::Layouter;
@@ -8,11 +9,10 @@ use halo2_proofs::plonk::ConstraintSystem;
 use halo2_proofs::plonk::Error;
 use halo2curves::grumpkin::Fq;
 use halo2curves::grumpkin::G1Affine;
-
-use crate::arith_gates::ArithOps;
-use crate::chip::ECChip;
-use crate::config::ECConfig;
-use crate::ec_gates::NativeECOps;
+use halo2_native_ecc::ArithOps;
+use halo2_native_ecc::ECChip;
+use halo2_native_ecc::ECConfig;
+use halo2_native_ecc::NativeECOps;
 
 #[derive(Default, Debug, Clone, Copy)]
 struct ArithTestCircuit {
@@ -189,4 +189,6 @@ fn test_field_ops() {
         let prover = MockProver::run(k, &circuit, vec![]).unwrap();
         assert!(prover.verify().is_err());
     }
+}   
+ 
 }

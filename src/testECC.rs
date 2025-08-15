@@ -1,197 +1,3 @@
-mod testArith{
-use ark_std::test_rng;
-use halo2_proofs::arithmetic::Field;
-use halo2_proofs::circuit::Layouter;
-use halo2_proofs::circuit::SimpleFloorPlanner;
-use halo2_proofs::dev::MockProver;
-use halo2_proofs::plonk::Circuit;
-use halo2_proofs::plonk::ConstraintSystem;
-use halo2_proofs::plonk::ErrorFront;
-use halo2curves::grumpkin::Fq;
-use halo2curves::grumpkin::G1Affine;
-use halo2_native_ecc::ArithOps;
-use halo2_native_ecc::ECChip;
-use halo2_native_ecc::ECConfig;
-use halo2_native_ecc::NativeECOps;
-
-#[derive(Default, Debug, Clone, Copy)]
-struct ArithTestCircuit {
-    f1: Fq,
-    f2: Fq,
-    f3: Fq,      // f3 = f1 + f2
-    f4: Fq,      // f4 = f1 * f2
-    f5: [Fq; 6], // partial bit decom
-}
-
-impl Circuit<Fq> for ArithTestCircuit {
-    type Config = ECConfig<G1Affine, Fq>;
-    type FloorPlanner = SimpleFloorPlanner;
-
-    fn without_witnesses(&self) -> Self {
-        Self::default()
-    }
-
-    fn configure(meta: &mut ConstraintSystem<Fq>) -> Self::Config {
-        ECChip::configure(meta)
-    }
-
-    fn synthesize(
-        &self,
-        config: Self::Config,
-        mut layouter: impl Layouter<Fq>,
-    ) -> Result<(), ErrorFront> {
-        let field_chip = ECChip::construct(config.clone());
-
-        layouter.assign_region(
-            || "test field circuit",
-            |mut region| {
-                let mut offset = 0;
-
-                // unit test: addition
-                {
-                    let f3_rec =
-                        field_chip.add(&mut region, &config, &self.f1, &self.f2, &mut offset)?;
-                    let f3 = field_chip.load_private_field(
-                        &mut region,
-                        &config,
-                        &self.f3,
-                        &mut offset,
-                    )?;
-                    region.constrain_equal(f3.cell(), f3_rec.cell())?;
-                }
-
-                // unit test: multiplication
-                {
-                    let f4_rec =
-                        field_chip.mul(&mut region, &config, &self.f1, &self.f2, &mut offset)?;
-                    let f4 = field_chip.load_private_field(
-                        &mut region,
-                        &config,
-                        &self.f4,
-                        &mut offset,
-                    )?;
-                    region.constrain_equal(f4.cell(), f4_rec.cell())?;
-                }
-
-                // unit test: partial bit decompose
-                {
-                    let _cells = field_chip.partial_bit_decomp(
-                        &mut region,
-                        &config,
-                        self.f5.as_ref(),
-                        &mut offset,
-                    )?;
-                }
-
-                // unit test: decompose u128
-                {
-                    let bytes = (0..16).map(|x| x).collect::<Vec<u8>>();
-                    let a = u128::from_le_bytes(bytes.try_into().unwrap());
-                    let _cells =
-                        field_chip.decompose_u128(&mut region, &config, &a, &mut offset)?;
-                }
-
-                // pad the last two rows
-                field_chip.pad(&mut region, &config, &mut offset)?;
-
-                Ok(())
-            },
-        )?;
-
-        Ok(())
-    }
-}
-
-#[test]
-fn test_field_ops() {
-    let k = 10;
-
-    let mut rng = test_rng();
-
-    let f1 = Fq::random(&mut rng);
-    let f2 = Fq::random(&mut rng);
-    let f3 = f1 + f2;
-    let f4 = f1 * f2;
-    {
-        let f5 = [
-            Fq::one(),
-            Fq::zero(),
-            Fq::zero(),
-            Fq::one(),
-            f1,
-            f1 * Fq::from(16) + Fq::from(9),
-        ];
-        let circuit = ArithTestCircuit { f1, f2, f3, f4, f5 };
-
-        let prover = MockProver::run(k, &circuit, vec![]).unwrap();
-        prover.assert_satisfied();
-    }
-
-    // ErrorFront case: addition fails
-    {
-        let f3 = f1 + f1;
-        let f5 = [
-            Fq::one(),
-            Fq::zero(),
-            Fq::zero(),
-            Fq::one(),
-            f1,
-            f1 * Fq::from(16) + Fq::from(9),
-        ];
-        let circuit = ArithTestCircuit { f1, f2, f3, f4, f5 };
-
-        let prover = MockProver::run(k, &circuit, vec![]).unwrap();
-        assert!(prover.verify().is_err());
-    }
-    // ErrorFront case: multiplication fails
-    {
-        let f4 = f1 * f1;
-        let f5 = [
-            Fq::one(),
-            Fq::zero(),
-            Fq::zero(),
-            Fq::one(),
-            f1,
-            f1 * Fq::from(16) + Fq::from(9),
-        ];
-        let circuit = ArithTestCircuit { f1, f2, f3, f4, f5 };
-
-        let prover = MockProver::run(k, &circuit, vec![]).unwrap();
-        assert!(prover.verify().is_err());
-    }
-    // ErrorFront case: not binary
-    {
-        let f5 = [
-            Fq::from(2),
-            Fq::zero(),
-            Fq::zero(),
-            Fq::one(),
-            f1,
-            f1 * Fq::from(16) + Fq::from(10),
-        ];
-        let circuit = ArithTestCircuit { f1, f2, f3, f4, f5 };
-
-        let prover = MockProver::run(k, &circuit, vec![]).unwrap();
-        assert!(prover.verify().is_err());
-    }
-    // ErrorFront case: sum not equal
-    {
-        let f5 = [
-            Fq::zero(),
-            Fq::zero(),
-            Fq::zero(),
-            Fq::one(),
-            f1,
-            f1 * Fq::from(16) + Fq::from(10),
-        ];
-        let circuit = ArithTestCircuit { f1, f2, f3, f4, f5 };
-
-        let prover = MockProver::run(k, &circuit, vec![]).unwrap();
-        assert!(prover.verify().is_err());
-    }
-}   
- 
-}
 
 mod testECC{
     use std::ops::Mul;
@@ -204,11 +10,11 @@ mod testECC{
     use halo2_proofs::halo2curves::group::Group;
     use halo2_proofs::plonk::Circuit;
     use halo2_proofs::plonk::ConstraintSystem;
-    use halo2_proofs::plonk::ErrorFront;
-    use halo2curves::grumpkin::Fq;
-    use halo2curves::grumpkin::Fr;
-    use halo2curves::grumpkin::G1Affine;
-    use halo2curves::grumpkin::G1;
+    use halo2_proofs::plonk::Error;
+    use halo2_proofs::halo2curves::grumpkin::Fq;
+    use halo2_proofs::halo2curves::grumpkin::Fr;
+    use halo2_proofs::halo2curves::grumpkin::G1Affine;
+    use halo2_proofs::halo2curves::grumpkin::G1;
     use halo2_native_ecc::ECChip;
     use halo2_native_ecc::ECConfig;
     use halo2_native_ecc::NativeECOps;
@@ -230,7 +36,7 @@ mod testECC{
             Blake2bRead, Blake2bWrite, Challenge255, TranscriptReadBuffer, TranscriptWriterBuffer,
         },
     };
-    use halo2curves::bn256::{G1Affine as BNG1Affine,Bn256};
+    use halo2_proofs::halo2curves::bn256::{G1Affine as BNG1Affine,Bn256};
     use rand::rngs::OsRng;
 
     #[derive(Default, Debug, Clone, Copy)]
@@ -259,7 +65,7 @@ mod testECC{
             &self,
             config: Self::Config,
             mut layouter: impl Layouter<Fq>,
-        ) -> Result<(), ErrorFront> {
+        ) -> Result<(), Error> {
             let ec_chip = ECChip::construct(config.clone());
 
             layouter.assign_region(
@@ -425,7 +231,7 @@ mod testECC{
                     &params,
                     &pk,
                     &[circuit],
-                    &[vec![]],
+                    &[&[]],
                     &mut rng,
                     &mut transcript,
                 )
@@ -442,7 +248,7 @@ mod testECC{
                 &verifier_params,
                 &vk2,
                 strategy,
-                &[vec![]],
+                &[&[]],
                 &mut verifier_transcript,
             ).is_ok());
         }
