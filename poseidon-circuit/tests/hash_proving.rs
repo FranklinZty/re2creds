@@ -172,4 +172,3 @@ fn proof_and_verify() {
         .is_ok()
     );
 }
-

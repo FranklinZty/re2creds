@@ -14,3 +14,23 @@ ff={version="0.13.0", features = ["bits"]}
 group = "0.13"
 halo2-native-ecc = {path="halo2-native-ecc"}
 ark-std = { version = "0.4.0", features = ["print-trace"] }
+
+
+
+
+bencher = "0.1"
+itertools = "0.13.0" # for compatibility msrv 1.75
+lazy_static = "1.4"
+log = "0.4"
+once_cell = "1.19"
+rand_chacha = "0.3.0"
+rand_xorshift = "0.3"
+subtle = {version = "2", optional = true}
+thiserror = "1.0"
+poseidon-circuit = { path = "poseidon-circuit"}
+
+
+
+[profile.test]
+opt-level = 3
+debug-assertions = true
