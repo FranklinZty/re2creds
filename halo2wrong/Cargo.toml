@@ -1,0 +1,10 @@
+[workspace]
+members = [
+  "maingate",
+  "integer",
+  "halo2wrong",
+  "ecc",
+  "ecdsa",
+  "transcript",
+]
+resolver = "2"

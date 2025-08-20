@@ -19,6 +19,7 @@ mod testECC{
     use halo2_native_ecc::ECConfig;
     use halo2_native_ecc::NativeECOps;
     use halo2_native_ecc::ArithOps;
+    use std::time::{Duration,Instant};
     use halo2_proofs::{
         circuit::{Value},
         plonk::{
@@ -201,7 +202,8 @@ mod testECC{
 
     #[test]
     fn test_ec_ops() {
-        let k = 14;
+        
+        let k = 11;
 
         let mut rng = test_rng();
         let s = Fr::random(&mut rng);
@@ -223,10 +225,14 @@ mod testECC{
             let params = ParamsKZG::<Bn256>::setup(k, &mut OsRng);
             let verifier_params = params.verifier_params();
             let vk = keygen_vk(&params, &circuit).expect("keygen_vk should not fail");
+            println!("finish keygen_vk");
             let vk2 = keygen_vk(&params, &circuit).expect("keygen_vk should not fail");
+            println!("finish keygen_vk2");
             let pk = keygen_pk(&params, vk, &circuit).expect("keygen_pk should not fail");
+            println!("finish keygen_pk");
             let mut rng = OsRng;
             let mut transcript = Blake2bWrite::<_, BNG1Affine, Challenge255<_>>::init(vec![]);
+            let start_time= Instant::now();
             create_proof::<KZGCommitmentScheme<_>, ProverSHPLONK<_>, _, _, _, _>(
                     &params,
                     &pk,
@@ -237,6 +243,9 @@ mod testECC{
                 )
                 .expect("proof generation should not fail");
             let proof = transcript.finalize();
+            println!("finish create_proof");
+            let duration=start_time.elapsed();
+            println!("proof generation time: {:?}", duration);
             println!("proof length: {}", proof.len());
 
             // Verify
