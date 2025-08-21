@@ -203,7 +203,7 @@ mod testECC{
     #[test]
     fn test_ec_ops() {
         
-        let k = 11;
+        let k = 14;
 
         let mut rng = test_rng();
         let s = Fr::random(&mut rng);

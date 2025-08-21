@@ -865,6 +865,7 @@ dependencies = [
  "maingate",
  "once_cell",
  "pasta_curves",
+ "paste",
  "poseidon-circuit",
  "rand",
  "rand_chacha",
